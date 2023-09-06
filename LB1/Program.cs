@@ -1,20 +1,14 @@
 ﻿namespace AoIS_LB1
 {
-	public class Entry
+	public class CSVEntry
 	{
 		public int Key { get; private set; }
-		private object[] data;
-		public object[] Data { get { return data; } }
+		public object Data { get; private set; }
 
-		Entry(int rowNum, object[] data)
+		CSVEntry(int rowNum, object data)
 		{
 			Key = rowNum;
-			this.data = data;
-		}
-
-		void SetCell(int colNum, object cell)
-		{
-			data[colNum] = cell;
+			Data = data;
 		}
 	}
 
