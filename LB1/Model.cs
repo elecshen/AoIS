@@ -1,4 +1,4 @@
-﻿namespace AoIS_LB1
+﻿namespace LB1
 {
 	public class CSVObject
 	{
