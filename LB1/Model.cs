@@ -1,31 +1,28 @@
-﻿namespace LB1
+﻿using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
+namespace LB1
 {
-	public class CSVObject
+	public abstract class Model : INotifyPropertyChanged
 	{
-		public string Name { get; set; }
-		public string Role { get; set; }
-		public bool IsHaveBag { get; set; }
-		public double Length { get; set; }
-		public double Width { get; set; }
-		public int Number { get; set; }
+		protected ModelTable table;
+		public ModelTable Table { get { return table; } }
 
-		public CSVObject(string name, string role, bool isHaveBag, double length, double width, int number)
-		{
-			Name = name;
-			Role = role;
-			IsHaveBag = isHaveBag;
-			Length = length;
-			Width = width;
-			Number = number;
+		public Model(Type objectsType) {
+			table = new(objectsType);
 		}
-	}
 
-	interface IAois_model
-	{
-		List<object> GetTable();
-		object FindEntry(int key);
-		bool EditEntry(object entry);
-		bool RemoveEntry(object entry);
-		bool AddEntry(object entry);
+		public abstract bool UploadTable();
+		public abstract bool RefreshTable();
+		public abstract object FindEntry(int key);
+		public abstract bool AddEntry(object entry);
+		public abstract bool EditEntry(int key, object entry);
+		public abstract bool RemoveEntry(object entry);
+
+		public event PropertyChangedEventHandler? PropertyChanged;
+		public void OnPropertyChanged([CallerMemberName] string prop = "")
+		{
+			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(prop));
+		}
 	}
 }
