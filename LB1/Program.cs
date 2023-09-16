@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-
-namespace LB1
+﻿namespace LB1
 {
 	internal class Program
 	{
