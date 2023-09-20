@@ -1,4 +1,6 @@
 ﻿using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 
 namespace LB1
 {
@@ -7,19 +9,12 @@ namespace LB1
 		private readonly Controler con;
 
 		private readonly Dictionary<Type, int> offsetsList;
-		private readonly List<int> offset = new();
-		private readonly List<int> offsetProg = new();
 		private readonly List<string> buttonsText;
-		private readonly List<int> offsetProgButton;
-		private readonly List<string[]> layout;
-		private readonly List<Action[]> layoutButtons;
-		private readonly List<string> messages;
-
 
 		public ConsoleView(Controler controler)
 		{
 			con = controler;
-			con.PropertyChanged += SetScreen;
+			con.UpdateTable += PrepareInterface;
 			offsetsList = new()
 				{
 					{typeof(int), 4},
@@ -29,41 +24,40 @@ namespace LB1
 				};
 			buttonsText = new() { "Добавить", "Сохранить", "Отменить", "Удалить" };
 			offsetProgButton = new();
-			layout = new();
 			layoutButtons = new();
-			messages = new();
+			ModelTypesSelector__Init(con.GetModelTypes());
 		}
 
-		public void Run()
+		#region ModelTypesSelector-----------------------------------------
+		private string[] ModelTypes;
+		[MemberNotNull(nameof(ModelTypes))]
+		public void ModelTypesSelector__Init(string[] models)
 		{
-			con.SwitchScreenTo(ViewStates.ModelSelect);
-			ConsoleKey pressedKey = ConsoleKey.NoName;
-			while (true)
-			{
-				pressedKey = Console.ReadKey().Key;
-				if (pressedKey == ConsoleKey.Escape)
-					break;
-
-				switch (con.ViewState)
-				{
-					case ViewStates.ModelSelect:
-						if (ChooseModel(pressedKey))
-						{
-							con.Model!.PropertyChanged += PrepareInterface;
-							con.SwitchScreenTo(ViewStates.CSVFilePath);
-						}
-						else
-							con.SwitchScreenTo(ViewStates.ModelSelect);
-						break;
-					case ViewStates.ShowTable:
-						ChooseCell(pressedKey);
-						con.SwitchScreenTo(ViewStates.ShowTable);
-						break;
-				}
-			}
+			if (models is null)
+				throw new ArgumentNullException(nameof(models), "Initialization with null");
+			ModelTypes = models;
+			ModelTypesSelector__CheckBorders();
 		}
-
-		private bool ChooseModel(ConsoleKey key)
+		public void ModelTypesSelector__Draw()
+		{
+			Console.WriteLine("Выберите модель для работы с данными:");
+			if (ModelTypes is null)
+				return;
+			foreach (var model in ModelTypes)
+			{
+				Console.WriteLine("    "+model);
+			}
+			Console.SetCursorPosition(0, 1 + con.ChoosedModel);
+			Console.Write("->");
+		}
+		private void ModelTypesSelector__CheckBorders()
+		{
+			if (con.ChoosedModel > ModelTypes.Length - 1)
+				con.ChoosedModel = ModelTypes.Length - 1;
+			else if (con.ChoosedModel < 0)
+				con.ChoosedModel = 0;
+		}
+		private bool ModelTypesSelector__ChooseModel(ConsoleKey key)
 		{
 			if (key == ConsoleKey.Enter)
 			{
@@ -73,13 +67,27 @@ namespace LB1
 				con.ChoosedModel++;
 			else if (key == ConsoleKey.UpArrow)
 				con.ChoosedModel--;
-
-			if (con.ChoosedModel > con.ModelTypes.Count - 1)
-				con.ChoosedModel = 0;
-			if (con.ChoosedModel < 0)
-				con.ChoosedModel = con.ModelTypes.Count - 1;
+			ModelTypesSelector__CheckBorders();
 			return false;
 		}
+		#endregion ModelTypesSelector--------------------------------------
+
+		#region CSVFilePathEntry-------------------------------------------
+		private void Draw__EnterFilePath(bool isWrong = false)
+		{
+			if (isWrong)
+				Console.WriteLine("Неверный путь!");
+			Console.WriteLine("Введите путь до файла:");
+			con.SetCSVPath(Console.ReadLine());
+		}
+		#endregion CSVFilePathEntry----------------------------------------
+
+		#region ShowTable--------------------------------------------------
+
+		private readonly List<int> offset = new();
+		private readonly List<int> offsetProg = new();
+		private readonly List<int> offsetProgButton;
+		private readonly List<Action[]> layoutButtons;
 
 		private bool ChooseCell(ConsoleKey key)
 		{
@@ -100,19 +108,83 @@ namespace LB1
 			return false;
 		}
 
+		private void PrepareInterface()
+		{
+			MakeLayout(con.GetTable());
+			CalcLineOffsets(con.GetTypes());
+			CalcButtonOffsets();
+			CheckCellBorders();
+		}
+
+		private void MakeLayout(List<string[]> table)
+		{
+			con.Layout.Clear();
+			layoutButtons.Clear();
+			for (int i = 0; i < table.Count; i++)
+			{
+				con.Layout.Add(new string[table[i].Length + 2]);
+				layoutButtons.Add(new Action[con.Layout.Last().Length]);
+				con.Layout[i][0] = i.ToString();
+				con.Layout[i][^1] = buttonsText[3];
+				table[i].CopyTo(con.Layout[i], 1);
+				for (int j = 0; j < layoutButtons[i].Length - 1; j++)
+					layoutButtons[i][j] += con.Button__EditEntry;
+				layoutButtons[i][^1] += con.Button__RemoveEntry;
+			}
+			if (con.IsEditing)
+			{
+				con.Layout.Add(con.ChoosedEntry.ToArray());
+				layoutButtons.Add(new Action[con.Layout.Last().Length]);
+				con.Layout.Add(new string[] { buttonsText[2], buttonsText[1] });
+				layoutButtons.Add(new Action[con.Layout.Last().Length]);
+				for (int j = 0; j < layoutButtons[^2].Length; j++)
+					layoutButtons[^2][j] += Button__EditCell;
+				layoutButtons[^1][0] += con.Button__ExitEdit;
+				layoutButtons[^1][1] += con.Button__SaveEdit;
+			}
+			else
+			{
+				con.Layout.Add(new string[] { buttonsText[0] });
+				layoutButtons.Add(new Action[con.Layout.Last().Length]);
+				layoutButtons[^1][0] += con.Button__AddEntry;
+			}
+		}
+
+		private void CalcButtonOffsets()
+		{
+			offsetProgButton.Clear();
+			offsetProgButton.Add(0);
+			foreach (var elem in con.Layout[^1])
+				offsetProgButton.Add(offsetProgButton.Last() + elem.Length + 1);
+		}
+
+		private void CalcLineOffsets(List<Type> types)
+		{
+			offset.Clear();
+			offsetProg.Clear();
+			offset.Add(offsetsList[typeof(int)]);
+			foreach (var type in types)
+				offset.Add(offsetsList[type]);
+			offset.Add(buttonsText[3].Length);
+
+			offsetProg.Add(0);
+			foreach (var off in offset)
+				offsetProg.Add(Math.Abs(offsetProg.Last()) + Math.Abs(off) + 3);
+		}
+
 		private void CheckCellBorders()
 		{
 			if (con.IsEditing)
 			{
-				if (con.CellTop < layout.Count - 2)
-					con.CellTop = layout.Count - 2;
+				if (con.CellTop < con.Layout.Count - 2)
+					con.CellTop = con.Layout.Count - 2;
 			}
 			else if (con.CellTop < 0)
 				con.CellTop = 0;
-			if (con.CellTop > layout.Count - 1)
-				con.CellTop = layout.Count - 1;
-			if (con.CellLeft > layout[con.CellTop].Length - 1)
-				con.CellLeft = layout[con.CellTop].Length - 1;
+			if (con.CellTop > con.Layout.Count - 1)
+				con.CellTop = con.Layout.Count - 1;
+			if (con.CellLeft > con.Layout[con.CellTop].Length - 1)
+				con.CellLeft = con.Layout[con.CellTop].Length - 1;
 			else if (con.CellLeft < 0)
 				con.CellLeft = 0;
 		}
@@ -125,202 +197,15 @@ namespace LB1
 			return true;
 		}
 
-		private void ChooseEntry(string startStr)
-		{
-			con.ChoosedEntry.Clear();
-			con.EntryKey = con.CellTop;
-			if (startStr == "+")
-				con.ChoosedEntry.AddRange(new string[con.GetModelTable()!.Types.Count + 1]);
-			else
-			{
-				con.ChoosedEntry.AddRange(layout[con.CellTop]);
-				con.ChoosedEntry.Remove(con.ChoosedEntry.Last());
-			}
-			con.ChoosedEntry[0] = startStr;
-		}
-
-		private void Button__AddEntry()
-		{
-			ChooseEntry("+");
-			con.IsEditing = true;
-			PrepareInterface();
-		}
-
-		private void Button__EditEntry()
-		{
-			ChooseEntry("~");
-			con.IsEditing = true;
-			PrepareInterface();
-		}
-
-		private void Button__EditCell()
-		{
-			Draw__TableSelector(true);
-			con.ChoosedEntry[con.CellLeft] = Draw__Input();
-			UpdateLayout();
-		}
-
-		private void Button__SaveEdit()
-		{
-			if (con.ChoosedEntry.FirstOrDefault() == "+")
-			{
-				if (con.AddEntry())
-				{
-					Button__ExitEdit();
-					return;
-				}
-			}
-			else
-			{
-				if (con.EditEntry())
-				{
-					Button__ExitEdit();
-					return;
-				}
-			}
-			messages.Add("Сохранение не удалось.");
-		}
-
-		private void Button__ExitEdit()
-		{
-			con.IsEditing = false;
-			PrepareInterface();
-		}
-
-		private void SetScreen(object? sender, PropertyChangedEventArgs e)
-		{
-			if (e.PropertyName == "ViewState")
-			{
-
-				Console.Clear();
-				switch (con.ViewState)
-				{
-					case ViewStates.ModelSelect:
-						Draw__ChooseModelType();
-						break;
-					case ViewStates.CSVFilePath:
-						Draw__EnterFilePath(false);
-						break;
-					case ViewStates.CSVFileWrongPath:
-						Draw__EnterFilePath(true);
-						break;
-					case ViewStates.ShowTable:
-						Draw__ShowTable();
-						break;
-				}
-			}
-		}
-
-		private void Draw__ChooseModelType()
-		{
-			Console.WriteLine("Выберите модель для работы с данными:");
-			string text;
-			foreach (var modelType in con.ModelTypes)
-			{
-				text = $"\t{modelType.Key}";
-				if (modelType.Value is null)
-					text += "(не поддерживается)";
-				Console.WriteLine(text);
-			}
-			Console.SetCursorPosition(0, 1 + con.ChoosedModel);
-			Console.Write("->");
-		}
-
-		private void Draw__EnterFilePath(bool isWrong)
-		{
-			if (isWrong)
-				Console.WriteLine("Неверный путь!");
-			Console.WriteLine("Введите путь до файла:");
-			((CSVModel)con.Model!).PathCSVFile = Console.ReadLine();
-		}
-
-		private void PrepareInterface(object? sender, PropertyChangedEventArgs e)
-		{
-			if (e.PropertyName != "UploadTable")
-				return;
-			PrepareInterface();
-		}
-
-		private void PrepareInterface()
-		{
-			UpdateLayout();
-			CalcLineOffsets();
-			CalcButtonOffsets();
-			CheckCellBorders();
-		}
-
-		private void UpdateLayout()
-		{
-			var modelTable = con.GetModelTable();
-			if (modelTable == null)
-				return;
-			var table = modelTable.Table;
-			layout.Clear();
-			layoutButtons.Clear();
-			for (int i = 0; i < table.Count; i++)
-			{
-				layout.Add(new string[modelTable.Types.Count + 2]);
-				layoutButtons.Add(new Action[layout.Last().Length]);
-				layout[i][0] = i.ToString();
-				layout[i][^1] = buttonsText[3];
-				table[i].ToString()!.Split(";").CopyTo(layout[i], 1);
-				for (int j = 0; j < layoutButtons[i].Length - 1; j++)
-					layoutButtons[i][j] += Button__EditEntry;
-				layoutButtons[i][^1] += con.RemoveEntry;
-			}
-			if (con.IsEditing)
-			{
-				layout.Add(con.ChoosedEntry.ToArray());
-				layoutButtons.Add(new Action[layout.Last().Length]);
-				layout.Add(new string[] { buttonsText[2], buttonsText[1] });
-				layoutButtons.Add(new Action[layout.Last().Length]);
-				for (int j = 0; j < layoutButtons[^2].Length; j++)
-					layoutButtons[^2][j] += Button__EditCell;
-				layoutButtons[^1][0] += Button__ExitEdit;
-				layoutButtons[^1][1] += Button__SaveEdit;
-			}
-			else
-			{
-				layout.Add(new string[] { buttonsText[0] });
-				layoutButtons.Add(new Action[layout.Last().Length]);
-				layoutButtons[^1][0] += Button__AddEntry;
-			}
-		}
-
-		private void CalcButtonOffsets()
-		{
-			offsetProgButton.Clear();
-			offsetProgButton.Add(0);
-			foreach (var elem in layout[^1])
-				offsetProgButton.Add(offsetProgButton.Last() + elem.Length + 1);
-		}
-
-		private void CalcLineOffsets()
-		{
-			var modelTable = con.GetModelTable();
-			if (modelTable == null)
-				return;
-			offset.Clear();
-			offsetProg.Clear();
-			offset.Add(offsetsList[typeof(int)]);
-			foreach (var type in modelTable.Types)
-				offset.Add(offsetsList[type]);
-			offset.Add(buttonsText[3].Length);
-
-			offsetProg.Add(0);
-			foreach (var off in offset)
-				offsetProg.Add(Math.Abs(offsetProg.Last()) + Math.Abs(off) + 3);
-		}
-
 		private void Draw__ShowTable()
 		{
 			int counter;
 			string l;
-			for (int i = 0; i < layout.Count - 1; i++)
+			for (int i = 0; i < con.Layout.Count - 1; i++)
 			{
 				counter = 0;
 				Console.Write(" ");
-				foreach (var val in layout[i])
+				foreach (var val in con.Layout[i])
 				{
 					l = $"{{0, {offset[counter++]}}} | ";
 					Console.Write(string.Format(l, val));
@@ -334,10 +219,10 @@ namespace LB1
 
 		private void Draw__UnderTableButtons()
 		{
-			for (int i = 0; i < layout[^1].Length; i++)
+			for (int i = 0; i < con.Layout[^1].Length; i++)
 			{
-				Console.SetCursorPosition(offsetProgButton[i] + 1, layout.Count - 1);
-				Console.Write(layout[^1][i]);
+				Console.SetCursorPosition(offsetProgButton[i] + 1, con.Layout.Count - 1);
+				Console.Write(con.Layout[^1][i]);
 			}
 		}
 
@@ -348,7 +233,7 @@ namespace LB1
 				l = "{}";
 			else
 				l = "[]";
-			if (con.CellTop == layout.Count - 1)
+			if (con.CellTop == con.Layout.Count - 1)
 			{
 				Console.SetCursorPosition(offsetProgButton[con.CellLeft], con.CellTop);
 				Console.Write(l[0]);
@@ -366,24 +251,87 @@ namespace LB1
 
 		private string Draw__Input()
 		{
-			Console.SetCursorPosition(offsetProg[con.CellLeft] + 1, layout.Count - 2);
+			Console.SetCursorPosition(offsetProg[con.CellLeft] + 1, con.Layout.Count - 2);
 			string l = $"{{0,{offset[con.CellLeft]}}}";
 			Console.Write(string.Format(l, ""));
-			Console.SetCursorPosition(offsetProg[con.CellLeft] + 1, layout.Count - 2);
+			Console.SetCursorPosition(offsetProg[con.CellLeft] + 1, con.Layout.Count - 2);
 			return Console.ReadLine()!;
 		}
 
 		private void Draw__WarningMessage()
 		{
-			if (messages.Count > 0)
+			if (con.Messages.Count > 0)
 			{
-				Console.SetCursorPosition(0, layout.Count);
-				while (messages.Count > 0)
+				Console.SetCursorPosition(0, con.Layout.Count);
+				while (con.Messages.Count > 0)
 				{
-					Console.WriteLine(messages[0]);
-					messages.RemoveAt(0);
+					Console.WriteLine(con.Messages[0]);
+					con.Messages.RemoveAt(0);
 				}
 			}
+		}
+		#endregion ShowTable-----------------------------------------------
+
+		public void Run()
+		{
+			con.SwitchScreenTo(ViewStates.ModelSelect);
+			ConsoleKey pressedKey = ConsoleKey.NoName;
+			while (true)
+			{
+				if (SetScreen())
+					continue;
+				pressedKey = Console.ReadKey().Key;
+				if (pressedKey == ConsoleKey.Escape)
+					break;
+
+				switch (con.ViewState)
+				{
+					case ViewStates.ModelSelect:
+						if (ModelTypesSelector__ChooseModel(pressedKey))
+						{
+							con.SwitchScreenTo(ViewStates.CSVFilePath);
+						}
+						else
+							con.SwitchScreenTo(ViewStates.ModelSelect);
+						break;
+					case ViewStates.ShowTable:
+						ChooseCell(pressedKey);
+						con.SwitchScreenTo(ViewStates.ShowTable);
+						break;
+				}
+			}
+		}
+
+		private bool SetScreen()
+		{
+			if (con.IsStateChanged)
+			{
+				con.IsStateChanged = false;
+				Console.Clear();
+				switch (con.ViewState)
+				{
+					case ViewStates.ModelSelect:
+						ModelTypesSelector__Draw();
+						break;
+					case ViewStates.CSVFilePath:
+						Draw__EnterFilePath(false);
+						return true;
+					case ViewStates.CSVFileWrongPath:
+						Draw__EnterFilePath(true);
+						return true;
+					case ViewStates.ShowTable:
+						Draw__ShowTable();
+						break;
+				}
+			}
+			return false;
+		}
+
+		private void Button__EditCell()
+		{
+			Draw__TableSelector(true);
+			con.ChoosedEntry[con.CellLeft] = Draw__Input();
+			MakeLayout(con.GetTable());
 		}
 	}
 }

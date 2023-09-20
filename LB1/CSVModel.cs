@@ -2,8 +2,8 @@
 {
 	public class CSVModel : Model
 	{
-		private string? pathCSVFile;
-		public string? PathCSVFile
+		private string pathCSVFile;
+		public string PathCSVFile
 		{
 			get { return pathCSVFile; }
 			set
@@ -13,7 +13,10 @@
 			}
 		}
 
-		public CSVModel(Type type) : base(type) { }
+		public CSVModel(Type type) : base(type)
+		{
+			pathCSVFile = string.Empty;
+		}
 
 		public override bool UploadTable()
 		{
@@ -21,8 +24,6 @@
 			{
 				Table.ClearTable();
 				Table.AddEntryStr(CSVFileDriver.GetTableStr(PathCSVFile));
-				
-				OnPropertyChanged("UploadTable");
 				return true;
 			}
 			return false;
