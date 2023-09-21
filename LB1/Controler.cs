@@ -1,17 +1,14 @@
-﻿using System.ComponentModel;
-using System.Runtime.CompilerServices;
+﻿using Microsoft.Extensions.Configuration;
 
 namespace LB1
 {
 	public enum ViewStates
 	{
 		ModelSelect,
-		CSVFilePath,
-		CSVFileWrongPath,
 		ShowTable,
 	}
 
-	public class Controler : INotifyPropertyChanged
+	public class Controler
 	{
 		private static Controler? instance;
 		public static Controler GetInstance()
@@ -22,55 +19,20 @@ namespace LB1
 
 		public event Action? UpdateTable;
 		public List<KeyValuePair<string, Type?>> ModelTypes { get; }
-		private ViewStates viewState;
-		public ViewStates ViewState
-		{
-			get { return viewState; }
-			private set
-			{
-				viewState = value;
-				OnPropertyChanged();
-			}
-		}
+		public ViewStates ViewState { get; private set; }
 		public bool IsStateChanged { get; set; }
-		private int choosedModel = 0;
-		public int ChoosedModel
-		{
-			get { return choosedModel; }
-			set
-			{
-				choosedModel = value;
-				OnPropertyChanged();
-			}
-		}
-		private int cellTop = 0;
-		public int CellTop
-		{
-			get { return cellTop; }
-			set
-			{
-				cellTop = value;
-				OnPropertyChanged();
-			}
-		}
-		private int cellLeft = 0;
-		public int CellLeft
-		{
-			get { return cellLeft; }
-			set 
-			{ 
-				cellLeft = value; 
-				OnPropertyChanged(); 
-			}
-		}
+		public int ChoosedModel { get; set; }
+		public int CellTop { get; set; }
+		public int CellLeft { get; set; }
 
 		public readonly List<string[]> Layout;
 		public readonly List<string> Messages;
 		public List<string> ChoosedEntry { get; }
-		public int EntryKey { get; set; }
+		public int ChoosedEntryKey { get; set; }
 		public bool IsEditing { get; set; }
 
-		public Model? Model { get; private set; }
+		public IModel? Model { get; private set; }
+		private readonly IConfigurationRoot configuration;
 
 		private Controler()
 		{
@@ -84,7 +46,11 @@ namespace LB1
 			ChoosedEntry = new();
 			IsEditing = false;
 			IsStateChanged = false;
-			Messages = new List<string>();
+			Messages = new();
+
+			configuration = new ConfigurationBuilder()
+				.AddIniFile(new FileInfo("..\\..\\..\\conf.ini").FullName)
+				.Build();
 		}
 
 		public void SwitchScreenTo(ViewStates state)
@@ -105,14 +71,27 @@ namespace LB1
 			return models;
 		}
 
-		public bool SetModel(int choosedModel)
+		public void SetModel()
 		{
-			if(ModelTypes[choosedModel].Value is null) 
-				return false;
-			Model = (Model?)Activator.CreateInstance(ModelTypes[choosedModel].Value!, new object[] { typeof(CSVObject) });
-			if (Model == null)
-				return false;
-			return true;
+			if(ModelTypes[ChoosedModel].Value is null)
+			{
+				SwitchScreenTo(ViewStates.ModelSelect);
+				return;
+			}
+			var section = configuration.GetSection(ModelTypes[ChoosedModel].Value!.ToString().Split('.').Last());
+			var path = section["CSVFilePath"] ?? "";
+			var objType = Type.GetType("LB1." + section["CSVObjectTypeName"]) ?? Type.Missing;
+			try
+			{
+				Model = (IModel?)Activator.CreateInstance(ModelTypes[ChoosedModel].Value!, new object[] { path, objType });
+				UpdateTable?.Invoke();
+				SwitchScreenTo(ViewStates.ShowTable);
+			}
+			catch (Exception ex)
+			{
+				Messages.Add(ex.Message);
+				SwitchScreenTo(ViewStates.ModelSelect);
+			}
 		}
 
 		private bool IsModelSelected()
@@ -125,42 +104,17 @@ namespace LB1
 			return true;
 		}
 
-		public void SetCSVPath(string? path)
+		public int CountOfField()
 		{
 			if (!IsModelSelected())
-				return;
-			if (path is null)
-			{
-				SwitchScreenTo(ViewStates.CSVFileWrongPath);
-				return;
-			}
-			if (Model is CSVModel model)
-			{
-				model.PathCSVFile = path;
-				if (model.UploadTable())
-				{
-					UpdateTable?.Invoke();
-					SwitchScreenTo(ViewStates.ShowTable);
-				}
-				else
-					SwitchScreenTo(ViewStates.CSVFileWrongPath);
-				return;
-			}
-			else
-				throw new Exception("Invalid model type");
+				return 0;
+			return Model!.CountOfFields();
 		}
 
 		public List<string[]> GetTable()
 		{
 			if (IsModelSelected())
-				return Model!.Table.Table.Select(e => e.ToString()!.Split(';')).ToList();
-			return new();
-		}
-
-		public List<Type> GetTypes()
-		{
-			if (IsModelSelected())
-				return Model!.Table.Types.ToList();
+				return Model!.GetValues().Select(e => e.ToString()!.Split(';')).ToList();
 			return new();
 		}
 
@@ -168,23 +122,18 @@ namespace LB1
 		{
 			if (!IsModelSelected())
 				return false;
-			object[] props = new object[ChoosedEntry.Count - 1];
 			try
 			{
-				for (int i = 1; i < ChoosedEntry.Count; i++)
-				{
-					props[i - 1] = Validator.ConvertToType(GetTypes()[i - 1], ChoosedEntry[i]);
-				}
-				object obj = Activator.CreateInstance(Model!.Table.ObjectsType, props)!;
-				if (Model.AddEntry(obj))
-				{
-					UpdateTable?.Invoke();
-					return true;
-				}
-				return false;
+				Model!.AddEntry(ChoosedEntry.Skip(1).ToArray());
+				UpdateTable?.Invoke();
+				return true;
 			}
-			catch
+			catch (Exception ex)
 			{
+				if (ex is InvalidArrayLengthException || ex is FormatException)
+				{
+					Messages.Add(ex.Message);
+				}
 				return false;
 			}
 		}
@@ -193,45 +142,43 @@ namespace LB1
 		{
 			if (!IsModelSelected())
 				return false;
-			object[] props = new object[ChoosedEntry.Count - 1];
-			for (int i = 1; i < ChoosedEntry.Count; i++)
-			{
-				props[i-1] = Validator.ConvertToType(GetTypes()[i - 1], ChoosedEntry[i]);
-			}
 			try
 			{
-				object obj = Activator.CreateInstance(Model!.Table.ObjectsType, props)!;
-				if (Model.EditEntry(EntryKey, obj))
-				{
-					UpdateTable?.Invoke();
-					return true;
-				}
-				return false;
+				Model!.EditEntry(ChoosedEntryKey, ChoosedEntry.Skip(1).ToArray());
+				UpdateTable?.Invoke();
+				return true;
 			}
-			catch
+			catch (Exception ex)
 			{
+				if(ex is InvalidArrayLengthException || ex is FormatException)
+				{
+					Messages.Add(ex.Message);
+				}
 				return false;
 			}
 		}
 
-		public bool RemoveEntry()
+		public void RemoveEntry()
 		{
 			if (!IsModelSelected())
-				return false;
-			if (Model!.RemoveEntry(Model.FindEntry(CellTop)))
+				return;
+			try
 			{
+				Model!.RemoveEntry(CellTop);
 				UpdateTable?.Invoke();
-				return true;
 			}
-			return false;
+			catch (ArgumentOutOfRangeException ex)
+			{
+				Messages.Add(ex.Message);
+			}
 		}
 
 		public void ChooseEntry(string startStr)
 		{
 			ChoosedEntry.Clear();
-			EntryKey = CellTop;
+			ChoosedEntryKey = CellTop;
 			if (startStr == "+")
-				ChoosedEntry.AddRange(new string[GetTypes().Count + 1]);
+				ChoosedEntry.AddRange(new string[Model!.CountOfFields() + 1]);
 			else
 			{
 				ChoosedEntry.AddRange(Layout[CellTop]);
@@ -239,6 +186,7 @@ namespace LB1
 			}
 			ChoosedEntry[0] = startStr;
 		}
+
 		public void Button__AddEntry()
 		{
 			ChooseEntry("+");
@@ -260,35 +208,15 @@ namespace LB1
 
 		public void Button__SaveEdit()
 		{
-			if (ChoosedEntry.FirstOrDefault() == "+")
-			{
-				if (AddEntry())
-				{
-					Button__ExitEdit();
-					return;
-				}
-			}
-			else
-			{
-				if (EditEntry())
-				{
-					Button__ExitEdit();
-					return;
-				}
-			}
-			Messages.Add("Сохранение не удалось.");
+			if (ChoosedEntry.FirstOrDefault() == "+" && AddEntry()
+				|| ChoosedEntry.FirstOrDefault() == "~" && EditEntry())
+				Button__ExitEdit();
 		}
 
 		public void Button__ExitEdit()
 		{
 			IsEditing = false;
 			UpdateTable?.Invoke();
-		}
-
-		public event PropertyChangedEventHandler? PropertyChanged;
-		public void OnPropertyChanged([CallerMemberName] string prop = "")
-		{
-			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(prop));
 		}
 	}
 }

@@ -1,69 +1,113 @@
 ﻿namespace LB1
 {
-	public class CSVModel : Model
+	public class CSVModel : IModel
 	{
-		private string pathCSVFile;
-		public string PathCSVFile
+		private readonly string pathCSVFile;
+		private readonly CSVTable tableHandler;
+		private bool addingMode;
+		public CSVModel(string pathCSVFile, Type objectType)
 		{
-			get { return pathCSVFile; }
-			set
+			if (pathCSVFile is null || !CSVFileDriver.CheckFile(pathCSVFile))
+				throw new FileNotFoundException("The path is not specified or is specified incorrectly");
+			this.pathCSVFile = pathCSVFile;
+			if (!typeof(ModelObject).IsAssignableFrom(objectType))
+				throw new UnsupportedTypeException($"Type {objectType} does not inherit {typeof(ModelObject)}");
+			try
 			{
-				pathCSVFile = value;
-				OnPropertyChanged();
+				tableHandler = new(objectType);
+
+				UploadTable();
 			}
+			catch { throw; }
 		}
 
-		public CSVModel(Type type) : base(type)
+		public List<object> GetValues()
 		{
-			pathCSVFile = string.Empty;
+			return tableHandler.Table.ToList();
 		}
 
-		public override bool UploadTable()
+		public int CountOfFields()
 		{
-			if (PathCSVFile != null && CSVFileDriver.CheckFile(PathCSVFile))
+			return tableHandler.FieldTypes.Count;
+		}
+
+		private void UploadTable()
+		{
+			var entries = CSVFileDriver.GetTableStr(pathCSVFile);
+
+			addingMode = true;
+			foreach (var entry in entries)
 			{
-				Table.ClearTable();
-				Table.AddEntryStr(CSVFileDriver.GetTableStr(PathCSVFile));
-				return true;
+				AddEntry(entry);
 			}
-			return false;
+			addingMode = false;
 		}
 
-		public override bool RefreshTable()
+		private void RefreshTable()
 		{
-			if(PathCSVFile == null)
-				return false;
-			CSVFileDriver.SaveTable(PathCSVFile, Table.Table.ToList());
-			return UploadTable();
+			CSVFileDriver.SaveTable(pathCSVFile, GetValues());
+			tableHandler.Table.Clear();
+			UploadTable();
 		}
 
-		public override object FindEntry(int key)
+		public object FindEntry(int key)
 		{
-			return Table.Table[key];
+			return tableHandler.Table[key];
 		}
 
-		public override bool AddEntry(object entry)
+		private object TryCreateEntry(string[] entryFields)
 		{
-			bool result = Table.AddEntry(entry);
-			if (result)
+			if (entryFields.Length != tableHandler.FieldTypes.Count)
+				throw new InvalidArrayLengthException("The number of array elements does not match the number of object properties");
+			object[] props = new object[entryFields.Length];
+			int i = 0;
+			try
+			{
+				for (; i < entryFields.Length; i++)
+					props[i] = Validator.ConvertToType(tableHandler.FieldTypes[i], entryFields[i]);
+			}
+			catch (FormatException ex)
+			{
+				throw new FormatException($"Failed to convert field {i} to type {tableHandler.FieldTypes[i]}", ex);
+			}
+			return Activator.CreateInstance(tableHandler.EntryObjectType, props)!;
+		}
+
+		public void AddEntry(string[] entryFields)
+		{
+			object entry;
+			try
+			{
+				entry = TryCreateEntry(entryFields);
+				tableHandler.AddEntry(entry);
+			}
+			catch { throw; }
+			if (!addingMode)
 				RefreshTable();
-			return result;
 		}
 
-		public override bool EditEntry(int key, object entry)
+		public void EditEntry(int key, string[] entryFields)
 		{
-			bool result = Table.EditEntry(key, entry);
-			if (result)
-				RefreshTable();
-			return result;
+			object entry;
+			try
+			{
+				entry = TryCreateEntry(entryFields);
+				tableHandler.EditEntry(key, entry);
+			}
+			catch { throw; }
+
+			RefreshTable();
 		}
 
-		public override bool RemoveEntry(object entry)
+		public void RemoveEntry(int key)
 		{
-			bool result = Table.RemoveEntry(entry);
-			if (result)
-				RefreshTable();
-			return result;
+			try
+			{
+				tableHandler.RemoveEntry(key);
+			}
+			catch { throw; }
+
+			RefreshTable();
 		}
 	}
 }

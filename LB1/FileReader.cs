@@ -1,6 +1,6 @@
 ﻿namespace LB1
 {
-	public static class CSVFileReader
+	public static class FileReader
 	{
 		public static List<string> ReadLines(string path)
 		{

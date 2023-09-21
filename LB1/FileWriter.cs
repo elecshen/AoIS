@@ -1,6 +1,6 @@
 ﻿namespace LB1
 {
-	public static class CSVFileWriter
+	public static class FileWriter
 	{
 		public static void SaveFile(string path, List<string> lines)
 		{

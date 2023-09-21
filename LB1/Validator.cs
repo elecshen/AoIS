@@ -2,25 +2,31 @@
 {
 	public static class Validator
 	{
-		public static Type[] FindTypes(string[] csvLine)
-		{
-			Type[] types = new Type[csvLine.Length];
-			for (int i = 0; i< csvLine.Length; i++)
-			{
-				if (int.TryParse(csvLine[i], out _)) types[i] = typeof(int);
-				else if (double.TryParse(csvLine[i], out _)) types[i] = typeof(double);
-				else if (bool.TryParse(csvLine[i], out _)) types[i] = typeof(bool);
-				else types[i] = typeof(string);
-			}
-			return types;
-		}
-
 		public static object ConvertToType(Type type, string str)
 		{
-			if (type == typeof(int)) return int.Parse(str);
-			else if (type == typeof(double)) return double.Parse(str);
-			else if (type == typeof(bool)) return bool.Parse(str);
-			else return str;
+			if (type == typeof(int))
+			{
+				if (int.TryParse(str, out _))
+					return int.Parse(str);
+				else
+					throw new FormatException();
+			}
+			else if (type == typeof(double))
+			{
+				if (double.TryParse(str, out _))
+					return double.Parse(str);
+				else
+					throw new FormatException();
+			}
+			else if (type == typeof(bool)) 
+			{
+				if (bool.TryParse(str, out _))
+					return bool.Parse(str);
+				else
+					throw new FormatException();
+			}
+			else 
+				return str;
 		}
 	}
 }
