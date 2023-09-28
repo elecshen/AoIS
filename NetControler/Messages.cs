@@ -1,90 +1,81 @@
-﻿using System.Text.Json;
+﻿using System.Net.Mime;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace TableReader.NetControler
 {
-	public interface IMessage
+	public enum MessageHeader
 	{
-		public string MessageType
-		{
-			get { return GetType().ToString(); }
-		}
-		//The data property should be only one and be called "Content"
-		public string GetJson()
-		{
-			return JsonSerializer.Serialize(this);
-		}
-		public static IMessage FromJson(string json)
-		{
-			var jObj = JsonDocument.Parse(json);
-			Type type = Type.GetType(jObj.RootElement.GetProperty(nameof(MessageType)).GetString()!)!;
-			return (IMessage)Activator.CreateInstance(type, new object[] { jObj.RootElement.GetProperty("Content") })!;
-		}
+		GetModelTypes,
+		ModelTypesList,
+		ModelParamsList,
+		TableContent,
+		AddEntry,
+		EditEntry,
+		RemoveEntry,
+		Error,
 	}
-	public abstract class TextMessage : IMessage
+
+	[JsonConverter(typeof(MessageConverter))]
+	public class Message
 	{
-		public string Content { get; }
-		public TextMessage(string content)
+		public MessageHeader Header { get; }
+		public Type ContentType { get; }
+		public object Content { get; }
+		public Message(MessageHeader header, Type contentType, object content)
 		{
+			Header = header;
+			ContentType = contentType;
 			Content = content;
-		}
-		public TextMessage(JsonElement content)
-		{
-			Content = content.ToString();
-		}
-	}
-	public abstract class StringListMessage : IMessage
-	{
-		public List<string> Content { get; }
-		public StringListMessage(List<string> content)
-		{
-			Content = content;
-		}
-		public StringListMessage(JsonElement content)
-		{
-			Content = content.EnumerateArray().Select(x => x.ToString()).ToList();
 		}
 	}
 
-	public class ModelTypesMessage : StringListMessage
+	public class MessageConverter : JsonConverter<Message>
 	{
-		public ModelTypesMessage(List<string> content) : base(content) { }
-		public ModelTypesMessage(JsonElement content) : base(content) { }
-	}
-	public class SetModelMessage : StringListMessage
-	{
-		public SetModelMessage(List<string> content) : base(content) { }
-		public SetModelMessage(JsonElement content) : base(content) { }
-	}
-	public class TableMessage : IMessage
-	{
-		public string[][] Content { get; }
-		public TableMessage(string[][] content)
+		public override Message Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
 		{
-			Content = content;
-		}
-		public TableMessage(JsonElement content)
-		{
-			var eArray = content.EnumerateArray();
-			Content = new string[eArray.Count()][];
-			for (int i = 0; i < Content.Length; i++)
+			// Read the start of the object
+			reader.Read();
+
+			var header = JsonSerializer.Deserialize<MessageHeader>(ref reader);
+
+			reader.Read();
+			if (reader.TokenType != JsonTokenType.PropertyName || reader.GetString() != nameof(Message.ContentType))
 			{
-				Content[i] = eArray.ElementAt(i).EnumerateArray().Select(x => x.ToString()).ToArray();
+				throw new JsonException($"Expected \"{nameof(Message.ContentType)}\" property.");
 			}
+			var contentType = Type.GetType(
+				JsonSerializer.Deserialize<string>(ref reader)
+				?? throw new JsonException("The \"Content Type\" property is null.")
+				) ?? throw new JsonException("The \"Content Type\" property has no supported value.");
+
+			reader.Read();
+			if (reader.TokenType != JsonTokenType.PropertyName || reader.GetString() != nameof(Message.Content))
+			{
+				throw new JsonException($"Expected \"{nameof(Message.Content)}\" property.");
+			}
+			var content = JsonSerializer.Deserialize(ref reader, contentType);
+
+			// Read the end of the object
+			reader.Read();
+
+			return new Message(header, contentType, content!);
 		}
-	}
-	public class EntryMessage : StringListMessage
-	{
-		public EntryMessage(List<string> content) : base(content) { }
-		public EntryMessage(JsonElement content) : base(content) { }
-	}
-	public class RemoveEntryMessage : TextMessage
-	{
-		public RemoveEntryMessage(string content) : base(content) { }
-		public RemoveEntryMessage(JsonElement content) : base(content) { }
-	}
-	public class ErrorMessage : TextMessage
-	{
-		public ErrorMessage(string content) : base(content) { }
-		public ErrorMessage(JsonElement content) : base(content) { }
+
+		public override void Write(Utf8JsonWriter writer, Message value, JsonSerializerOptions options)
+		{
+			writer.WriteStartObject();
+
+			writer.WritePropertyName(nameof(Message.Header));
+			JsonSerializer.Serialize(writer, value.Header, options);
+
+			writer.WritePropertyName(nameof(Message.ContentType));
+			JsonSerializer.Serialize(writer, value.ContentType.FullName, options);
+
+			writer.WritePropertyName(nameof(Message.Content));
+			JsonSerializer.Serialize(writer, value.Content, options);
+
+			writer.WriteEndObject();
+		}
 	}
 }

@@ -34,7 +34,7 @@ namespace TableReader.ClientApp
 		private readonly IConfigurationRoot configuration;
 		public NetClient netClient;
 
-		public string[][]? Table;
+		public List<string[]> Table;
 
 		private ClientControler()
 		{
@@ -48,6 +48,7 @@ namespace TableReader.ClientApp
 				.AddIniFile(new FileInfo("..\\..\\..\\conf.ini").FullName)
 				.Build();
 			netClient = new("127.0.0.1", 8888);
+			Table = new();
 		}
 
 		public void SwitchScreenTo(ViewStates state)
@@ -88,15 +89,15 @@ namespace TableReader.ClientApp
 
 		public int CountOfFields()
 		{
-			if (Table is not null && Table.Length > 0)
+			if (Table.Count > 0)
 				return Table[0].Length;
 			return 0;
 		}
 
 		public List<string[]> GetTable()
 		{
-			if (Table is not null && Table.Length > 0)
-				return Table.ToList();
+			if (Table.Count > 0)
+				return Table;
 			return new();
 		}
 
