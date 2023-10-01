@@ -1,4 +1,4 @@
-﻿namespace LB1
+﻿namespace Server
 {
 	[Serializable]
 	public class UnsupportedTypeException : Exception

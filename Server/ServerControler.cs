@@ -1,10 +1,36 @@
-﻿using Microsoft.Extensions.Configuration;
-using System.Data;
-using System.IO;
-using TableReader.NetControler;
+﻿using System.Data;
+using NetControler;
+using Server.Models;
+using System.Reflection;
 
-namespace TableReader.Server
+namespace Server
 {
+	public class ModelConfiguration
+	{
+		public string Name { get; }
+		public Type ModelType { get; }
+		public List<ModelObject> AcceptableObjects { get; }
+		public ModelConfiguration(string name, Type modelType)
+		{
+			ModelType = modelType;
+			Name = name;
+			AcceptableObjects = new();
+		}
+	}
+
+	public class ModelObject
+	{
+		public string Name { get; }
+		public Type ObjectType { get; }
+		public object?[] ConnectionParameters { get; }
+		public ModelObject(string name, Type objectType, params object?[] connectionParameters)
+		{
+			Name = name;
+			ObjectType = objectType;
+			ConnectionParameters = connectionParameters;
+		}
+	}
+
 	public class ServerControler
 	{
 		private static ServerControler? instance;
@@ -14,186 +40,125 @@ namespace TableReader.Server
 			return instance;
 		}
 
-		public List<KeyValuePair<string, Type?>> ModelTypes { get; }
+		public void Init(IEnumerable<ModelConfiguration> configurations)
+		{
+			ModelTypes.AddRange(configurations);
+		}
 
-		public IModel? Model { get; private set; }
-		private readonly IConfigurationRoot configuration;
+		private readonly List<ModelConfiguration> ModelTypes;
 
 		private ServerControler()
 		{
-			configuration = new ConfigurationBuilder()
-				.AddIniFile(new FileInfo("..\\..\\..\\conf.ini").FullName)
-				.Build();
-
 			ModelTypes = new();
-			foreach (var type in (configuration["ModelTypes"] ?? "").Split(",").Select(x => x.Split(",")))
-			{
-				ModelTypes.Add(new(type[0], Type.GetType("LB1" + type[1])));
-			};
 		}
 
-		public IMessage GetModelTypes()
+		public Message GetModelTypes()
 		{
-			string[] models = new string[ModelTypes.Count];
-			for (int i = 0; i < ModelTypes.Count; i++)
+			Dictionary<string, string[]> models = new();
+			foreach (var m in ModelTypes)
 			{
-				models[i] = ModelTypes[i].Key;
-				if (ModelTypes[i].Value is null)
-					models[i] += "(не поддерживается)";
+				models.Add(m.Name, m.AcceptableObjects.Select(o => o.Name).ToArray());
 			}
-			return new ModelTypesMessage(models.ToList());
+			return new Message(MessageHeader.ModelTypesList, new string[2], models.GetType(), models);
 		}
 
-		public void SetModel(SetModelMessage message)
+		public dynamic? CreateModel(string[] content)
 		{
-			int ChoosedModel = int.Parse(message.Content[0]);
-			IMessage answer;
-			if (ModelTypes[ChoosedModel].Value is null)
-			{
-				answer = new ErrorMessage("");
-			}
-			else
+			dynamic? model = null;
+
+			ModelConfiguration? choosedModel;
+			int chosedObject;
+			if ((choosedModel = ModelTypes.Find(m => m.Name == content[0])) is not null
+				&& (chosedObject = choosedModel.AcceptableObjects.FindIndex(o => o.Name == content[1])) != -1)
 			{
 				try
 				{
-					Model = (IModel?)Activator.CreateInstance(
-						ModelTypes[ChoosedModel].Value!, 
-						new object[] {
-							message.Content[0],
-							message.Content[0] });
-					answer = new TableMessage(GetTable().ToArray());
+					Type modelType = choosedModel.ModelType.MakeGenericType(choosedModel.AcceptableObjects[chosedObject].ObjectType);
+					model = (dynamic?)Activator.CreateInstance(
+						modelType,
+						choosedModel.AcceptableObjects[chosedObject].ConnectionParameters
+						);
 				}
 				catch (Exception ex)
 				{
-					Messages.Add(ex.Message);
-					SwitchScreenTo(ViewStates.ModelSelect);
+					//Log...
 				}
 			}
+			return model;
 		}
 
-		private bool IsModelSelected()
+#pragma warning disable CA1822 // Пометьте члены как статические
+		public Message GetTable(dynamic model)
+#pragma warning restore CA1822 // Пометьте члены как статические
 		{
-			if (Model is null)
+			List<string[]> list = new();
+			var entries = model.GetValues();
+			PropertyInfo[] properties;
+			if (entries.Count > 0)
 			{
-				SwitchScreenTo(ViewStates.ModelSelect);
-				return false;
+				properties = entries[0].GetType().GetProperties();
+				foreach (var entry in entries)
+				{
+					list.Add(properties.Select(x => $"{x.GetValue(entry)}").ToArray());
+				}
 			}
-			return true;
+			return new Message(MessageHeader.TableContent, new string[2], list.GetType(), list);
 		}
 
-		public int CountOfField()
+#pragma warning disable CA1822 // Пометьте члены как статические
+		private Message GetErrorMessage(string message)
+#pragma warning restore CA1822 // Пометьте члены как статические
 		{
-			if (!IsModelSelected())
-				return 0;
-			return Model!.CountOfFields();
+			return new Message(MessageHeader.Error, new string[2], typeof(string), message);
 		}
 
-		public List<string[]> GetTable()
+		public Message AddEntry(IEnumerable<string> content, dynamic model)
 		{
-			if (IsModelSelected())
-				return Model!.GetValues().Select(e => e.ToString()!.Split(';')).ToList();
-			return new();
-		}
-
-		public bool AddEntry()
-		{
-			if (!IsModelSelected())
-				return false;
 			try
 			{
-				Model!.AddEntry(ChoosedEntry.Skip(1).ToArray());
-				UpdateTable?.Invoke();
-				return true;
+				model.AddEntry(content);
 			}
 			catch (Exception ex)
 			{
 				if (ex is InvalidArrayLengthException || ex is FormatException)
 				{
-					Messages.Add(ex.Message);
+					return GetErrorMessage(ex.Message);
 				}
-				return false;
+				else
+					throw;
 			}
+			return GetTable(model);
 		}
 
-		public bool EditEntry()
+		public Message EditEntry(List<string> content, dynamic model)
 		{
-			if (!IsModelSelected())
-				return false;
 			try
 			{
-				Model!.EditEntry(ChoosedEntryKey, ChoosedEntry.Skip(1).ToArray());
-				UpdateTable?.Invoke();
-				return true;
+				model.EditEntry(int.Parse(content[0]), content.GetRange(1, content.Count-1));
 			}
 			catch (Exception ex)
 			{
 				if (ex is InvalidArrayLengthException || ex is FormatException)
 				{
-					Messages.Add(ex.Message);
+					return GetErrorMessage(ex.Message);
 				}
-				return false;
+				else
+					throw;
 			}
+			return GetTable(model);
 		}
 
-		public void RemoveEntry()
+		public Message RemoveEntry(string content, dynamic model)
 		{
-			if (!IsModelSelected())
-				return;
 			try
 			{
-				Model!.RemoveEntry(CellTop);
-				UpdateTable?.Invoke();
+				model.RemoveEntry(int.Parse(content));
 			}
 			catch (ArgumentOutOfRangeException ex)
 			{
-				Messages.Add(ex.Message);
+				return GetErrorMessage(ex.Message);
 			}
-		}
-
-		public void ChooseEntry(string startStr)
-		{
-			ChoosedEntry.Clear();
-			ChoosedEntryKey = CellTop;
-			if (startStr == "+")
-				ChoosedEntry.AddRange(new string[Model!.CountOfFields() + 1]);
-			else
-			{
-				ChoosedEntry.AddRange(Layout[CellTop]);
-				ChoosedEntry.Remove(ChoosedEntry.Last());
-			}
-			ChoosedEntry[0] = startStr;
-		}
-
-		public void Button__AddEntry()
-		{
-			ChooseEntry("+");
-			IsEditing = true;
-			UpdateTable?.Invoke();
-		}
-
-		public void Button__EditEntry()
-		{
-			ChooseEntry("~");
-			IsEditing = true;
-			UpdateTable?.Invoke();
-		}
-
-		public void Button__RemoveEntry()
-		{
-			RemoveEntry();
-		}
-
-		public void Button__SaveEdit()
-		{
-			if (ChoosedEntry.FirstOrDefault() == "+" && AddEntry()
-				|| ChoosedEntry.FirstOrDefault() == "~" && EditEntry())
-				Button__ExitEdit();
-		}
-
-		public void Button__ExitEdit()
-		{
-			IsEditing = false;
-			UpdateTable?.Invoke();
+			return GetTable(model);
 		}
 	}
 }

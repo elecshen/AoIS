@@ -1,4 +1,4 @@
-﻿namespace TableReader.ClientApp
+﻿namespace ClientApp
 {
 	internal class Program
 	{

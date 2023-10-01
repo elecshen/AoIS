@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-namespace TableReader.ClientApp
+namespace ClientApp
 {
 	public class ConsoleView
 	{
@@ -15,7 +15,7 @@ namespace TableReader.ClientApp
 			buttonsText = new() { "Добавить", "Сохранить", "Отменить", "Удалить" };
 			offsetProgButton = new();
 			layoutButtons = new();
-			ModelTypesSelector__Init(con.GetModelTypes());
+			ModelTypesSelector__Init(con.GetModels());
 		}
 
 		#region ModelTypesSelector-----------------------------------------
@@ -25,19 +25,15 @@ namespace TableReader.ClientApp
 		[MemberNotNull(nameof(ModelTypes))]
 		public void ModelTypesSelector__Init(List<string> models)
 		{
-			if (models is null)
-				throw new ArgumentNullException(nameof(models), "Initialization with null");
 			ModelTypes = models;
 			ModelTypesSelector__CheckBorders();
 		}
 		public void ModelTypesSelector__Draw()
 		{
 			Console.WriteLine("Выберите модель для работы с данными:");
-			if (ModelTypes is null)
-				return;
 			foreach (var model in ModelTypes)
 			{
-				Console.WriteLine("    "+model);
+				Console.WriteLine("    " + model);
 			}
 			Draw__WarningMessage();
 			Console.SetCursorPosition(0, 1 + con.ChoosedModel);
@@ -54,7 +50,7 @@ namespace TableReader.ClientApp
 		{
 			if (key == ConsoleKey.Enter)
 			{
-				con.SetModel();
+				ModelObjects = con.GetModelObjects();
 				return true;
 			}
 			if (key == ConsoleKey.DownArrow)
@@ -62,6 +58,50 @@ namespace TableReader.ClientApp
 			else if (key == ConsoleKey.UpArrow)
 				con.ChoosedModel--;
 			ModelTypesSelector__CheckBorders();
+			return false;
+		}
+		#endregion ModelTypesSelector--------------------------------------
+
+		#region ModelObjectsSelector-----------------------------------------
+
+		private List<string> ModelObjects;
+
+		[MemberNotNull(nameof(ModelObjects))]
+		public void ModelObjectsSelector__Init(List<string> objects)
+		{
+			ModelObjects = objects;
+			ModelObjectsSelector__CheckBorders();
+		}
+		public void ModelObjectsSelector__Draw()
+		{
+			Console.WriteLine("Выберите модель для работы с данными:");
+			foreach (var obj in ModelObjects)
+			{
+				Console.WriteLine("    "+obj);
+			}
+			Draw__WarningMessage();
+			Console.SetCursorPosition(0, 1 + con.ChoosedObject);
+			Console.Write("->");
+		}
+		private void ModelObjectsSelector__CheckBorders()
+		{
+			if (con.ChoosedObject > ModelObjects.Count - 1)
+				con.ChoosedObject = ModelObjects.Count - 1;
+			else if (con.ChoosedObject < 0)
+				con.ChoosedObject = 0;
+		}
+		private bool ModelObjectsSelector__ChooseObject(ConsoleKey key)
+		{
+			if (key == ConsoleKey.Enter)
+			{
+				con.SetModel();
+				return true;
+			}
+			if (key == ConsoleKey.DownArrow)
+				con.ChoosedObject++;
+			else if (key == ConsoleKey.UpArrow)
+				con.ChoosedObject--;
+			ModelObjectsSelector__CheckBorders();
 			return false;
 		}
 		#endregion ModelTypesSelector--------------------------------------
@@ -250,6 +290,12 @@ namespace TableReader.ClientApp
 					case ViewStates.ModelSelect:
 						if (!ModelTypesSelector__ChooseModel(pressedKey))
 							con.SwitchScreenTo(ViewStates.ModelSelect);
+						else
+							con.SwitchScreenTo(ViewStates.ObjectSelect);
+						break;
+					case ViewStates.ObjectSelect:
+						if (!ModelObjectsSelector__ChooseObject(pressedKey))
+							con.SwitchScreenTo(ViewStates.ObjectSelect);
 						break;
 					case ViewStates.ShowTable:
 						ShowTable__ChooseCell(pressedKey);
@@ -269,6 +315,9 @@ namespace TableReader.ClientApp
 				{
 					case ViewStates.ModelSelect:
 						ModelTypesSelector__Draw();
+						break;
+					case ViewStates.ObjectSelect:
+						ModelObjectsSelector__Draw();
 						break;
 					case ViewStates.ShowTable:
 						ShowTable__Draw();

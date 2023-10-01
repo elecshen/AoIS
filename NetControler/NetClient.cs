@@ -1,7 +1,8 @@
 ﻿using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 
-namespace TableReader.NetControler
+namespace NetControler
 {
 
 	public class NetClient
@@ -16,17 +17,17 @@ namespace TableReader.NetControler
 			stream = tcpClient.GetStream();
 		}
 
-		public IMessage SendRequest(IMessage message)
+		public Message SendRequest(Message message)
 		{
 			List<byte> data = new();
-			stream.Write(Encoding.UTF8.GetBytes(message.GetJson()));
+			string json = JsonSerializer.Serialize(message);
+			stream.Write(Encoding.Unicode.GetBytes(json));
 			do
 			{
 				data.Add((byte)stream.ReadByte());
 			}
 			while (stream.DataAvailable);
-			string json = Encoding.UTF8.GetString(data.ToArray());
-			return IMessage.FromJson(json);
+			return JsonSerializer.Deserialize<Message>(Encoding.Unicode.GetString(data.ToArray()))!;
 		}
 
 		~NetClient()

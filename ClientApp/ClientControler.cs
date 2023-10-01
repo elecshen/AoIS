@@ -1,11 +1,12 @@
 ﻿using Microsoft.Extensions.Configuration;
-using TableReader.NetControler;
+using NetControler;
 
-namespace TableReader.ClientApp
+namespace ClientApp
 {
 	public enum ViewStates
 	{
 		ModelSelect,
+		ObjectSelect,
 		ShowTable,
 	}
 
@@ -20,35 +21,34 @@ namespace TableReader.ClientApp
 
 		public event Action? UpdateTable;
 		public ViewStates ViewState { get; private set; }
-		public List<KeyValuePair<string, Type?>> ModelTypes { get; }
 		public bool IsStateChanged { get; set; }
 		public int ChoosedModel { get; set; }
+		public int ChoosedObject { get; set; }
 		public int CellTop { get; set; }
 		public int CellLeft { get; set; }
-
-		public readonly List<string[]> Layout;
-		public readonly List<string> Errors;
 		public List<string> ChoosedEntry { get; }
 		public int ChoosedEntryKey { get; set; }
 		public bool IsEditing { get; set; }
-		private readonly IConfigurationRoot configuration;
-		public NetClient netClient;
 
-		public List<string[]> Table;
+		private readonly NetClient netClient;
+		private Dictionary<string, string[]> ModelConfigs;
+		private string[] modelData;
+		private List<string[]> Table;
+		public List<string[]> Layout {  get; }
+		public List<string> Errors {  get; }
 
 		private ClientControler()
 		{
-			ModelTypes = new();
-			Layout = new();
+			IsStateChanged = false;
 			ChoosedEntry = new();
 			IsEditing = false;
-			IsStateChanged = false;
-			Errors = new();
-			configuration = new ConfigurationBuilder()
-				.AddIniFile(new FileInfo("..\\..\\..\\conf.ini").FullName)
-				.Build();
-			netClient = new("127.0.0.1", 8888);
+
+			netClient = new("127.0.0.1", 8080);
+			ModelConfigs = new();
+			modelData = new string[2];
 			Table = new();
+			Layout = new();
+			Errors = new();
 		}
 
 		public void SwitchScreenTo(ViewStates state)
@@ -57,33 +57,51 @@ namespace TableReader.ClientApp
 			IsStateChanged = true;
 		}
 
-		public List<string> GetModelTypes()
+		public List<string> GetModels()
 		{
-			IMessage answer = netClient.SendRequest(new ModelTypesMessage(new List<string>()));
-			return ((ModelTypesMessage)answer).Content;
+			Message answer = netClient.SendRequest(new Message(MessageHeader.GetModelTypes));
+			if (answer.Header == MessageHeader.ModelTypesList && answer.Content is Dictionary<string, string[]> content)
+			{
+				ModelConfigs = content;
+				List<string> result = new(ModelConfigs.Select(m => m.Key));
+				return result;
+			}
+			Errors.Add("Bad message");
+			return new();
+		}
+
+		public List<string> GetModelObjects()
+		{
+			List<string> result = new(ModelConfigs.Values.ElementAt(ChoosedModel).ToList());
+			return result;
 		}
 
 		public bool SetModel()
 		{
-			var section = configuration.GetSection(ModelTypes[ChoosedModel].Value!.ToString().Split('.').Last());
-			List<string> messData = new()
+			string[] messData = new string[] { ModelConfigs.ElementAt(ChoosedModel).Key, ModelConfigs!.ElementAt(ChoosedModel).Value[ChoosedObject] };
+			Message answer = netClient.SendRequest(new Message(MessageHeader.ModelParamsList, new string[2], messData.GetType(), messData));
+			if (UpdateTableOrShowError(answer))
 			{
-				ChoosedModel.ToString(),
-				section["CSVFilePath"] ?? "noPath",
-				section["CSVObjectTypeName"] ?? "noObjType",
-			};
-			IMessage answer = netClient.SendRequest(new SetModelMessage(messData));
-			if(answer is TableMessage message)
+				modelData = answer.ModelData;
+				return true;
+			}
+			SwitchScreenTo(ViewStates.ModelSelect);
+			return false;
+		}
+
+		private bool UpdateTableOrShowError(Message message)
+		{
+			if (message.Header == MessageHeader.TableContent && message.Content is List<string[]> content)
 			{
-				Table = message.Content;
+				Table = content;
+				UpdateTable?.Invoke();
 				SwitchScreenTo(ViewStates.ShowTable);
 				return true;
 			}
-			else if(answer is ErrorMessage ex)
+			else if (message.Header == MessageHeader.Error && message.Content is string error)
 			{
-				Errors.Add(ex.Content);
+				Errors.Add(error);
 			}
-			SwitchScreenTo(ViewStates.ModelSelect);
 			return false;
 		}
 
@@ -103,22 +121,9 @@ namespace TableReader.ClientApp
 
 		public bool AddEntry()
 		{
-			List<string> messData = new(ChoosedEntry)
-			{
-				[0] = "-1"
-			};
-			IMessage answer = netClient.SendRequest(new EntryMessage(messData));
-			if(answer is TableMessage message)
-			{
-				Table = message.Content;
-				UpdateTable?.Invoke();
-				return true;
-			}
-			else if(answer is ErrorMessage ex)
-			{
-				Errors.Add(ex.Content);
-			}
-			return false;
+			string[] messData = ChoosedEntry.GetRange(1, ChoosedEntry.Count - 1).ToArray();
+			Message answer = netClient.SendRequest(new Message(MessageHeader.AddEntry, modelData, messData.GetType(), messData));
+			return UpdateTableOrShowError(answer);
 		}
 
 		public bool EditEntry()
@@ -127,35 +132,15 @@ namespace TableReader.ClientApp
 			{
 				[0] = ChoosedEntryKey.ToString()
 			};
-			IMessage answer = netClient.SendRequest(new EntryMessage(messData));
-			if (answer is TableMessage message)
-			{
-				Table = message.Content;
-				UpdateTable?.Invoke();
-				return true;
-			}
-			else if (answer is ErrorMessage ex)
-			{
-				Errors.Add(ex.Content);
-			}
-			return false;
+			Message answer = netClient.SendRequest(new Message(MessageHeader.EditEntry, modelData, messData.GetType(), messData));
+			return UpdateTableOrShowError(answer);
 		}
 
 		public bool RemoveEntry()
 		{
 			string messData = CellTop.ToString();
-			IMessage answer = netClient.SendRequest(new RemoveEntryMessage(messData));
-			if (answer is TableMessage message)
-			{
-				Table = message.Content;
-				UpdateTable?.Invoke();
-				return true;
-			}
-			else if (answer is ErrorMessage ex)
-			{
-				Errors.Add(ex.Content);
-			}
-			return false;
+			Message answer = netClient.SendRequest(new Message(MessageHeader.RemoveEntry, modelData, messData.GetType(), messData));
+			return UpdateTableOrShowError(answer);
 		}
 
 		public void ChooseEntry(string startStr)
@@ -187,7 +172,7 @@ namespace TableReader.ClientApp
 		}
 
 		public void Button__RemoveEntry()
-		{//SwichScreen?
+		{
 			RemoveEntry();
 		}
 

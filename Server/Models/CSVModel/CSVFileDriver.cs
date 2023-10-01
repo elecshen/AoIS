@@ -1,4 +1,6 @@
-﻿namespace LB1
+﻿using Server.IOFile;
+
+namespace Server.Models.CSVModel
 {
 	public static class CSVFileDriver
 	{
@@ -7,10 +9,10 @@
 			return File.Exists(path);
 		}
 
-		public static string[][] GetTableStr(string path, string sep=";")
+		public static string[][] GetTableStr(string path, string sep = ";")
 		{
 			var strLines = FileReader.ReadLines(path);
-			if(strLines.Count == 0) return Array.Empty<string[]>();
+			if (strLines.Count == 0) return Array.Empty<string[]>();
 			string[][] tableStr = new string[strLines.Count][];
 			for (int i = 0; i < strLines.Count; i++)
 			{
@@ -19,9 +21,9 @@
 			return tableStr;
 		}
 
-		public static bool SaveTable(string path, List<object> table)
+		public static bool SaveTable(string path, List<string[]> table)
 		{
-			FileWriter.SaveFile(path, table.Select(x => x.ToString()).ToList()!);
+			FileWriter.SaveFile(path, table.Select(x => string.Join(";", x)).ToList());
 			return false;
 		}
 	}
