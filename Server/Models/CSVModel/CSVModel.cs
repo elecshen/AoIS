@@ -68,15 +68,15 @@ namespace Server.Models.CSVModel
                 for (; i < entryFields.Count(); i++)
                     properties[i].SetValue(newEntry, Validator.ConvertToType(properties[i].PropertyType, entryFields.ElementAt(i)));
             }
-            catch (FormatException ex)
-            {
-                throw new FormatException($"Failed to convert field {i} to type {properties[i].PropertyType}", ex);
-            }
-            catch (MethodAccessException ex)
-            {
-                throw new MethodAccessException($"Inconsistency on the availability of property \"{properties[i].Name}\"", ex);
-            }
-            return newEntry;
+			catch (FormatException ex)
+			{
+				throw new FormatException($"Failed to convert field {i} to type {properties[i].PropertyType}\n" + ex.Message, ex);
+			}
+			catch (MethodAccessException ex)
+			{
+				throw new MethodAccessException($"Inconsistency on the availability of property \"{properties[i].Name}\"\n" + ex.Message, ex);
+			}
+			return newEntry;
         }
 
         public void AddEntry(IEnumerable<string> entryFields)

@@ -32,8 +32,10 @@
                 else
                     throw new FormatException();
             }
-            else
+            else if (type == typeof(string))
                 return str;
+            else
+                throw new FormatException("There is no way to validate the type");
         }
     }
 }

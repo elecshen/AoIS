@@ -38,11 +38,11 @@ namespace Server.Models.MSSQLModel
 			}
 			catch (FormatException ex)
 			{
-				throw new FormatException($"Failed to convert field {i} to type {properties[i].PropertyType}", ex);
+				throw new FormatException($"Failed to convert field {i} to type {properties[i].PropertyType}\n"+ex.Message, ex);
 			}
 			catch (MethodAccessException ex)
 			{
-				throw new MethodAccessException($"Inconsistency on the availability of property \"{properties[i].Name}\"", ex);
+				throw new MethodAccessException($"Inconsistency on the availability of property \"{properties[i].Name}\"\n"+ex.Message, ex);
 			}
 			return newEntry;
 		}
@@ -72,20 +72,15 @@ namespace Server.Models.MSSQLModel
 				int i = 0;
 				try
 				{
-					for (; i < entryFields.Count(); i++)
+					for (; i < properties.Length; i++)
 					{
-						var value = Validator.ConvertToType(properties[i].PropertyType, entryFields.ElementAt(i));
-						if (properties[i].GetValue(exEntry) != value)
-							properties[i].SetValue(exEntry, value);
+						if (properties[i].GetValue(exEntry) != properties[i].GetValue(entry))
+							properties[i].SetValue(exEntry, properties[i].GetValue(entry));
 					}
-				}
-				catch (FormatException ex)
-				{
-					throw new FormatException($"Failed to convert field {i} to type {properties[i].PropertyType}", ex);
 				}
 				catch (MethodAccessException ex)
 				{
-					throw new MethodAccessException($"Inconsistency on the availability of property \"{properties[i].Name}\"", ex);
+					throw new MethodAccessException($"Inconsistency on the availability of property \"{properties[i].Name}\"\n" + ex.Message, ex);
 				}
 				context.SaveChanges();
 			}
