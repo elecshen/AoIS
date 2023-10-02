@@ -2,11 +2,14 @@
 using NLog.Config;
 using Server.Models;
 using Server.Models.CSVModel;
+using Server.Models.CSVModel.Entities;
+using Server.Models.MSSQLModel;
+using Server.Models.MSSQLModel.Entities;
 using NLog;
 
 namespace Server
 {
-	internal class Program
+    internal class Program
 	{
 		static async Task Main()
 		{
@@ -14,10 +17,11 @@ namespace Server
 			List<ModelConfiguration> configurations = new()
 			{
 				new ModelConfiguration("CSV файл", typeof(CSVModel<>)),
-				new ModelConfiguration("База данных MS SQL", null),
-				new ModelConfiguration("Другая", null)
+				new ModelConfiguration("База данных MS SQL", typeof(MSSQLModel<,>)),
 			};
-			configurations[0].AcceptableObjects.Add(new ModelObject("Что то", typeof (MyCSVObject), "D:\\file.csv"));
+			configurations[0].AcceptableObjects.Add(new ModelObject("Что то", new Type[] { typeof(MyCSVObject) }, "D:\\file.csv"));
+			configurations[1].AcceptableObjects.Add(new ModelObject("Преподаватели", new Type[] { typeof(DMContext), typeof(Преподаватели) }));
+			configurations[1].AcceptableObjects.Add(new ModelObject("Формы Контроля", new Type[] { typeof(DMContext), typeof(ФормыКонтроля) }));
 			ServerControler.GetInstance().Init(configurations);
 
 			NetReceiver receiver = new();

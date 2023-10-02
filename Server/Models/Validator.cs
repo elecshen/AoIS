@@ -25,6 +25,13 @@
                 else
                     throw new FormatException();
             }
+            else if (type == typeof(Guid))
+            {
+                if (Guid.TryParse(str, out _))
+                    return Guid.Parse(str);
+                else
+                    throw new FormatException();
+            }
             else
                 return str;
         }

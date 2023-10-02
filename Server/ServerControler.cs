@@ -6,32 +6,6 @@ using NLog;
 
 namespace Server
 {
-	public class ModelConfiguration
-	{
-		public string Name { get; }
-		public Type ModelType { get; }
-		public List<ModelObject> AcceptableObjects { get; }
-		public ModelConfiguration(string name, Type modelType)
-		{
-			ModelType = modelType;
-			Name = name;
-			AcceptableObjects = new();
-		}
-	}
-
-	public class ModelObject
-	{
-		public string Name { get; }
-		public Type ObjectType { get; }
-		public object?[] ConnectionParameters { get; }
-		public ModelObject(string name, Type objectType, params object?[] connectionParameters)
-		{
-			Name = name;
-			ObjectType = objectType;
-			ConnectionParameters = connectionParameters;
-		}
-	}
-
 	public class ServerControler
 	{
 		private static ServerControler? instance;
@@ -98,7 +72,13 @@ namespace Server
 			PropertyInfo[] properties;
 			if (entries.Count > 0)
 			{
+
 				properties = entries[0].GetType().GetProperties();
+				properties = properties.Where(p =>
+				{
+					var m = p.GetGetMethod();
+					return m is not null && !m.IsVirtual;
+				}).ToArray();
 				foreach (var entry in entries)
 				{
 					list.Add(properties.Select(x => $"{x.GetValue(entry)}").ToArray());
