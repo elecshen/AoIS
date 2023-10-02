@@ -1,6 +1,8 @@
 ﻿using NetControler;
+using NLog.Config;
 using Server.Models;
 using Server.Models.CSVModel;
+using NLog;
 
 namespace Server
 {
@@ -8,6 +10,7 @@ namespace Server
 	{
 		static async Task Main()
 		{
+			LogManager.Configuration = new XmlLoggingConfiguration("NLog.config");
 			List<ModelConfiguration> configurations = new()
 			{
 				new ModelConfiguration("CSV файл", typeof(CSVModel<>)),
@@ -45,7 +48,7 @@ namespace Server
 					MessageHeader.AddEntry,
 					(message) =>
 					{
-						if (message.Content is List<string> content)
+						if (message.Content is string[] content)
 						{
 							var model = ServerControler.GetInstance().CreateModel(message.ModelData);
 							if (model is not null)

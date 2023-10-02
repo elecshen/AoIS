@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
-using NetControler;
+﻿using NetControler;
 
 namespace ClientApp
 {
@@ -30,7 +29,6 @@ namespace ClientApp
 		public int ChoosedEntryKey { get; set; }
 		public bool IsEditing { get; set; }
 
-		private readonly NetClient netClient;
 		private Dictionary<string, string[]> ModelConfigs;
 		private string[] modelData;
 		private List<string[]> Table;
@@ -43,7 +41,6 @@ namespace ClientApp
 			ChoosedEntry = new();
 			IsEditing = false;
 
-			netClient = new("127.0.0.1", 8080);
 			ModelConfigs = new();
 			modelData = new string[2];
 			Table = new();
@@ -59,7 +56,7 @@ namespace ClientApp
 
 		public List<string> GetModels()
 		{
-			Message answer = netClient.SendRequest(new Message(MessageHeader.GetModelTypes));
+			Message answer = NetClient.SendRequest(new Message(MessageHeader.GetModelTypes));
 			if (answer.Header == MessageHeader.ModelTypesList && answer.Content is Dictionary<string, string[]> content)
 			{
 				ModelConfigs = content;
@@ -78,8 +75,12 @@ namespace ClientApp
 
 		public bool SetModel()
 		{
-			string[] messData = new string[] { ModelConfigs.ElementAt(ChoosedModel).Key, ModelConfigs!.ElementAt(ChoosedModel).Value[ChoosedObject] };
-			Message answer = netClient.SendRequest(new Message(MessageHeader.ModelParamsList, new string[2], messData.GetType(), messData));
+			string[] messData;
+			if (ModelConfigs.Count > ChoosedModel && ModelConfigs.Count > 0 && ModelConfigs.ElementAt(ChoosedModel).Value.Length > ChoosedObject)
+				messData = new string[2] { ModelConfigs.ElementAt(ChoosedModel).Key, ModelConfigs!.ElementAt(ChoosedModel).Value[ChoosedObject] };
+			else
+				messData = new string[2];
+			Message answer = NetClient.SendRequest(new Message(MessageHeader.ModelParamsList, new string[2], messData.GetType(), messData));
 			if (UpdateTableOrShowError(answer))
 			{
 				modelData = answer.ModelData;
@@ -122,7 +123,7 @@ namespace ClientApp
 		public bool AddEntry()
 		{
 			string[] messData = ChoosedEntry.GetRange(1, ChoosedEntry.Count - 1).ToArray();
-			Message answer = netClient.SendRequest(new Message(MessageHeader.AddEntry, modelData, messData.GetType(), messData));
+			Message answer = NetClient.SendRequest(new Message(MessageHeader.AddEntry, modelData, messData.GetType(), messData));
 			return UpdateTableOrShowError(answer);
 		}
 
@@ -132,14 +133,14 @@ namespace ClientApp
 			{
 				[0] = ChoosedEntryKey.ToString()
 			};
-			Message answer = netClient.SendRequest(new Message(MessageHeader.EditEntry, modelData, messData.GetType(), messData));
+			Message answer = NetClient.SendRequest(new Message(MessageHeader.EditEntry, modelData, messData.GetType(), messData));
 			return UpdateTableOrShowError(answer);
 		}
 
 		public bool RemoveEntry()
 		{
 			string messData = CellTop.ToString();
-			Message answer = netClient.SendRequest(new Message(MessageHeader.RemoveEntry, modelData, messData.GetType(), messData));
+			Message answer = NetClient.SendRequest(new Message(MessageHeader.RemoveEntry, modelData, messData.GetType(), messData));
 			return UpdateTableOrShowError(answer);
 		}
 

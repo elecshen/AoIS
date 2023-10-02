@@ -8,7 +8,9 @@ namespace ClientApp
 
 		private readonly List<string> buttonsText;
 
+#pragma warning disable CS8618 // Поле, не допускающее значения NULL, должно содержать значение, отличное от NULL, при выходе из конструктора. Возможно, стоит объявить поле как допускающее значения NULL.
 		public ConsoleView(ClientControler controler)
+#pragma warning restore CS8618 // Поле, не допускающее значения NULL, должно содержать значение, отличное от NULL, при выходе из конструктора. Возможно, стоит объявить поле как допускающее значения NULL.
 		{
 			con = controler;
 			con.UpdateTable += ShowTable__PrepareInterface;
@@ -74,7 +76,7 @@ namespace ClientApp
 		}
 		public void ModelObjectsSelector__Draw()
 		{
-			Console.WriteLine("Выберите модель для работы с данными:");
+			Console.WriteLine("Выберите объект структурирования данных:");
 			foreach (var obj in ModelObjects)
 			{
 				Console.WriteLine("    "+obj);

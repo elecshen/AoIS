@@ -2,6 +2,7 @@
 using NetControler;
 using Server.Models;
 using System.Reflection;
+using NLog;
 
 namespace Server
 {
@@ -46,10 +47,11 @@ namespace Server
 		}
 
 		private readonly List<ModelConfiguration> ModelTypes;
-
+		private readonly Logger Logger;
 		private ServerControler()
 		{
 			ModelTypes = new();
+			Logger = LogManager.GetCurrentClassLogger();
 		}
 
 		public Message GetModelTypes()
@@ -81,7 +83,7 @@ namespace Server
 				}
 				catch (Exception ex)
 				{
-					//Log...
+					Logger.Error(ex);
 				}
 			}
 			return model;
@@ -122,6 +124,7 @@ namespace Server
 			{
 				if (ex is InvalidArrayLengthException || ex is FormatException)
 				{
+					Logger.Error(ex);
 					return GetErrorMessage(ex.Message);
 				}
 				else
@@ -140,6 +143,7 @@ namespace Server
 			{
 				if (ex is InvalidArrayLengthException || ex is FormatException)
 				{
+					Logger.Error(ex);
 					return GetErrorMessage(ex.Message);
 				}
 				else
@@ -156,6 +160,7 @@ namespace Server
 			}
 			catch (ArgumentOutOfRangeException ex)
 			{
+				Logger.Error(ex);
 				return GetErrorMessage(ex.Message);
 			}
 			return GetTable(model);
