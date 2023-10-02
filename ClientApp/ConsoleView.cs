@@ -186,7 +186,7 @@ namespace ClientApp
 			offsetProg.Clear();
 			offset.Add(4);
 			for (int i = 0; i < coloumNum; i++)
-				offset.Add(-12);
+				offset.Add(-13);
 			offset.Add(buttonsText[3].Length);
 
 			offsetProg.Add(0);
@@ -226,8 +226,9 @@ namespace ClientApp
 				Console.Write(" ");
 				foreach (var val in con.Layout[i])
 				{
-					l = $"{{0, {offset[counter++]}}} | ";
-					Console.Write(string.Format(l, val));
+					l = $"{{0, {offset[counter]}}} | ";
+					Console.Write(string.Format(l, val is not null && val.Length > Math.Abs(offset[counter]) ? val[..Math.Abs(offset[counter])] : val));
+					counter++;
 				}
 				Console.WriteLine("");
 			}
