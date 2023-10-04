@@ -22,6 +22,7 @@ namespace NetControler
 			try
 			{
 				listener.Start();
+				Logger.Info("The server is running");
 
 				while (true)
 				{
