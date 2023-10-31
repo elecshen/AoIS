@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.33627.172
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LB1", "LB1\LB1.csproj", "{CB514027-C4B2-4EAB-AFB5-13EC3A1A0190}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VK REST OAuth", "VK REST OAuth\VK REST OAuth.csproj", "{AC12595E-8240-4EC2-B7D7-955D3687F73A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +11,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{CB514027-C4B2-4EAB-AFB5-13EC3A1A0190}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CB514027-C4B2-4EAB-AFB5-13EC3A1A0190}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CB514027-C4B2-4EAB-AFB5-13EC3A1A0190}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CB514027-C4B2-4EAB-AFB5-13EC3A1A0190}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AC12595E-8240-4EC2-B7D7-955D3687F73A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC12595E-8240-4EC2-B7D7-955D3687F73A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC12595E-8240-4EC2-B7D7-955D3687F73A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC12595E-8240-4EC2-B7D7-955D3687F73A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
