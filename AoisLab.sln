@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.33627.172
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VK REST OAuth", "VK REST OAuth\VK REST OAuth.csproj", "{AC12595E-8240-4EC2-B7D7-955D3687F73A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HTML Parser", "HTML Parser\HTML Parser.csproj", "{3D9D1707-FD03-4305-AE21-58B4FFB1D98D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +11,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{AC12595E-8240-4EC2-B7D7-955D3687F73A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AC12595E-8240-4EC2-B7D7-955D3687F73A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AC12595E-8240-4EC2-B7D7-955D3687F73A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AC12595E-8240-4EC2-B7D7-955D3687F73A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D9D1707-FD03-4305-AE21-58B4FFB1D98D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D9D1707-FD03-4305-AE21-58B4FFB1D98D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D9D1707-FD03-4305-AE21-58B4FFB1D98D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D9D1707-FD03-4305-AE21-58B4FFB1D98D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
