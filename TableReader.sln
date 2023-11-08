@@ -12,7 +12,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetControler", "NetControle
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClientApp", "ClientApp\ClientApp.csproj", "{0BC07E6A-13D1-4245-8EEE-51C7E7902CFC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClientWPFApp", "ClientWPFApp\ClientWPFApp.csproj", "{ED73A34A-DE05-415C-9793-9F09DC465F9D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClientWPFApp", "ClientWPFApp\ClientWPFApp.csproj", "{ED73A34A-DE05-415C-9793-9F09DC465F9D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
