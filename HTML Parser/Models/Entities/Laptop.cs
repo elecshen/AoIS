@@ -18,25 +18,25 @@ public partial class Laptop
     [Column("OS")]
     [StringLength(50)]
     [Unicode(false)]
-    public string Os { get; set; } = null!;
+    public string? Os { get; set; } = null!;
 
     [Column("Screen_diagonal")]
     [StringLength(20)]
     [Unicode(false)]
-    public string ScreenDiagonal { get; set; } = null!;
+    public string? ScreenDiagonal { get; set; } = null!;
 
     [Column("Processor_model")]
     [StringLength(50)]
     [Unicode(false)]
-    public string ProcessorModel { get; set; } = null!;
+    public string? ProcessorModel { get; set; } = null!;
 
     [Column("Video_card_type")]
     [StringLength(50)]
     [Unicode(false)]
-    public string VideoCardType { get; set; } = null!;
+    public string? VideoCardType { get; set; } = null!;
 
     [Column("Video_card_model")]
     [StringLength(50)]
     [Unicode(false)]
-    public string VideoCardModel { get; set; } = null!;
+    public string? VideoCardModel { get; set; } = null!;
 }
