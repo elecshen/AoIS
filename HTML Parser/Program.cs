@@ -4,12 +4,13 @@ namespace HTML_Parser
 {
     internal class Program
     {
-        static async Task Main()
+        static void Main()
         {
-            await Parser.Parse(@"https://2droida.ru/collection/televizory-xiaomi");
+            // true - запускает парсинг через AngleSharp, false - будет использовать только средства Selenium
+            Parser.Parse(@"https://www.citilink.ru/catalog/noutbuki/", true);
             using var dbcon = new LocalDBContext();
-            foreach(var t in dbcon.Tvs)
-                Console.WriteLine("{0}\n\t{1}\n\t{2}\n\t{3}", t.Name, t.Brand, t.Diagonal, t.Weight);
+            foreach(var t in dbcon.Laptops)
+                Console.WriteLine("{0}\n\t{1}\n\t{2}\n\t{3}\n\t{4}\n\t{5}", t.Name, t.Os, t.ScreenDiagonal, t.ProcessorModel, t.VideoCardType, t.VideoCardModel);
         }
     }
 }

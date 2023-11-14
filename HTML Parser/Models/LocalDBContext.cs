@@ -1,5 +1,6 @@
 ﻿using HTML_Parser.Models.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace HTML_Parser.Models;
 
@@ -14,13 +15,26 @@ public partial class LocalDBContext : DbContext
     {
     }
 
+    public virtual DbSet<Laptop> Laptops { get; set; }
+
     public virtual DbSet<Tv> Tvs { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer("Server=LAPTOP-4AHQIJI5\\SQLEXPRESS;Database=AoIS;Trusted_Connection=True;TrustServerCertificate=True;");
+    {
+        IConfigurationRoot configuration = new ConfigurationBuilder()
+               .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+               .AddUserSecrets<LocalDBContext>()
+               .Build();
+        optionsBuilder.UseSqlServer(configuration.GetConnectionString(nameof(LocalDBContext)));
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Laptop>(entity =>
+        {
+            entity.Property(e => e.IdLaptop).HasDefaultValueSql("(newid())");
+        });
+
         modelBuilder.Entity<Tv>(entity =>
         {
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
