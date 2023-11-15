@@ -1,4 +1,4 @@
-﻿# AOIS Lab 6 Selenium
+﻿# AoIS Lab 6 Selenium
 Проект консольного приложения на .NET Core 6.
 
 Для данного примера использовался веб-драйвер Selenium в сочетании с браузером Google Chrome ([Поддерживаемые браузеры](https://www.selenium.dev/documentation/webdriver/browsers/)). Для парсинга использовался сайт Citilink, а конкретно его [каталог с ноутбуками](https://www.citilink.ru/catalog/noutbuki/).
