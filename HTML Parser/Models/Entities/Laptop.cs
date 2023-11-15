@@ -39,4 +39,6 @@ public partial class Laptop
     [StringLength(50)]
     [Unicode(false)]
     public string? VideoCardModel { get; set; } = null!;
+
+    public State State { get; set; } = null!;
 }

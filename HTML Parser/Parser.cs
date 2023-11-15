@@ -27,14 +27,14 @@ namespace HTML_Parser
             // Установка таймаута ожидания для корректного парсинга догружаемых элементов.
             driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
             driver.Navigate().GoToUrl(url);
-            List<string> alist = driver.FindElements(By.CssSelector("div.app-catalog-1tp0ino.e1an64qs0 a")).Select(elem => elem.GetAttribute("href") + "properties/").ToList();
+            List<string> alist = driver.FindElements(By.CssSelector("div.app-catalog-1tp0ino.e1an64qs0 a")).Select(elem => elem.GetAttribute("href") + "properties/").Take(11..20).ToList();
             List<Laptop> laptops;
             if (isUseAS)
             { // Вариант с использованием AngleSharp. Быстрее
                 var parser = new HtmlParser();
-                
+
                 List<string> htmls = new();
-                foreach (var a in alist.Take(10))
+                foreach (var a in alist)
                 { // Сохраняем код каждой необходимой страницы
                     Console.WriteLine(a);
                     driver.Navigate().GoToUrl(a);
@@ -49,7 +49,22 @@ namespace HTML_Parser
             { // Вариант на чистом Selenium. Медленнее
                 laptops = SeleniumParse(driver, alist);
             }
+
             using var dbcon = new LocalDBContext();
+            var props = typeof(Laptop).GetProperties();
+            var states = dbcon.States.ToList();
+            foreach (var a in laptops)
+            {
+                a.State = states[0];
+                foreach(var p in props)
+                {
+                    if(p.Name != "IdLaptop" && p.GetValue(a) is null)
+                    {
+                        a.State = states[1];
+                        break;
+                    }
+                }
+            }
             dbcon.AddRange(laptops);
             dbcon.SaveChanges();
         }
@@ -94,7 +109,7 @@ namespace HTML_Parser
             Laptop laptop;
             KeyValuePair<string, string> prop;
 
-            foreach (var a in alist.Take(10))
+            foreach (var a in alist)
             {
                 Console.WriteLine(a);
                 driver.Navigate().GoToUrl(a);

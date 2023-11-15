@@ -17,6 +17,8 @@ public partial class LocalDBContext : DbContext
 
     public virtual DbSet<Laptop> Laptops { get; set; }
 
+    public virtual DbSet<State> States { get; set; }
+
     public virtual DbSet<Tv> Tvs { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
