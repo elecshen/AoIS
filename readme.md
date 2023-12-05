@@ -14,5 +14,5 @@
      1. [Парсинга статического сайта без догрузки данных скриптами.](https://github.com/elecshen/AoIS/tree/Lb6)
      2. [Парсинг динамического сайта с дозагрузкой данных с помощью Selenium. Сравнение парсинга средствами Selenium и сочетания Selenium и AngleSharp.](https://github.com/elecshen/AoIS/tree/Lb6_Selenium)
  7. [Миграция базы данных](https://github.com/elecshen/AoIS/tree/Lb7)
- 8. SOAP сервисы
+ 8. [SOAP сервисы. Подключение к сервису калькулятора и создание подобного ему локально.](https://github.com/elecshen/AoIS/tree/Lb8)
  9. Работа с СОМ-объектами
