@@ -1,68 +1,99 @@
-﻿
-# AOIS Lab 5
-Проект WPF на .NET Core 6.
+﻿# AoIS Lab 8
+Проекты WPF и Web приложении на .NET Core 6.
 
-В качестве сервиса для авторизации по протоколу OAuth был выбран сайт **ВК**.
-## Создание Standalone-приложения
-Для доступа к API VK потребуется создать **Standalone-приложение** на [странице управления приложениями](https://vk.com/apps?act=manage).
+## Работа со сторонним SOAP сервисом
+Для рассмотрения взаимодействия был выбран сервис калькулятора на сайте [numpyninja](https://www.numpyninja.com/post/save-time-compiled-list-of-free-wsdl-urls).
+Список сервисов с сайта:
+ - [Калькулятор (функции сложения, вычитания, умножения и деления)](http://www.dneonline.com/calculator.asmx?WSDL)
+ - [Справочник по странам (множество методов для получения различной общей информации о странах)](http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso?WSDL)
+ - [Конвертер температуры (метод преобразования Цельсия в Фаренгейт и обратно)](https://www.w3schools.com/xml/tempconvert.asmx?WSDL)
+ - [Конвертер чисел (метод конвертации в словесную форму числа и доллара)](https://www.dataaccess.com/webservicesserver/numberconversion.wso?WSDL)
+ - "Hello, world!" сервис (нужно отправить имя, чтобы получить приветствие) [Ссылка больше не актуальна]
 
-![Создание нового приложения](https://github.com/elecshen/AoIS/blob/Lb5/imgs/createapp.png)
+### Генерация кода сервиса
+Для начала создадим проект WPF. Теперь в контекстном меню проекта добавим ссылку на службу **Добавить -> Ссылка на службу...**
 
-Далее в настройках приложения требуется сделать следующие шаги:
+![Добавление ссылки на службу](https://github.com/elecshen/AoIS/blob/Lb8/imgs/addservicelink.png)
 
- 1. Установить параметр "Состояние" значение "Включено: доступно всем".
- 2. Установить параметр "Open API" значение "Включён".
- 3. Установить параметрам "Адрес сайта" и "Базовый домен"  значения "http://localhost" и "localhost" соответственно.
- 4. Нажать "Сохранить изменения".
+> Выполнение этой части лабораторной также возможно в рамках WinForms и консольного проектов. Wpf выбран для удобства создания интерфейса.
 
-![Настройка приложения](https://github.com/elecshen/AoIS/blob/Lb5/imgs/configureapp.png)
+Выбираем WCF Web Service.
 
-> Значения "ID приложения" и "Защищённый ключ" пригодятся для составления запросов к API VK
+![Выбираем метод подключения](https://github.com/elecshen/AoIS/blob/Lb8/imgs/chooseWcf.png)
 
-## WPF приложение
-При создание WPF приложения возникнет несколько трудностей.
-### Элемент WebBrowser
-Стандартный элемент браузера работает на основе Internet Explorer 7, который устарел ещё в 2009, и так уж вышло, что он не способен провести вход в аккаунт VK, потому что никакие стили и скрипты просто не подключаются.
-> Есть [способ](https://vc.ru/dev/168213-c-webbrowser-chast1-emulyaciya-raznyh-versiy-ie) поменять версию на 11, но это тоже не решит проблем с нормальной работой скриптов и прочих частей страницы.
+Вводим адрес сервиса и запускаем поиск кнопкой **Перейти**. Можем проверить, что все методы найдены, кликнув на название сервиса. Далее вводим названия пространства имён и кликаем **Далее** (названия пространства имён может быть произвольным, например, CalcSrv). Пролистываем остальные вкладки и нажимаем **Готово**.
 
-Одним из вариантов решения проблемы является подключение сторонних пакетов, например, [CefSharp](https://github.com/cefsharp/CefSharp). Это довольно мощный пакет, который позволяет создать собственный браузер на WPF или WinForms. Однако нам понадобится лишь его WPF элемент **ChromiumWebBrowser**.
+![Поиск методов сервиса](https://github.com/elecshen/AoIS/blob/Lb8/imgs/findService.png)
 
-Для того, чтобы использовать этот элемент достаточно установить пакет **CefSharp.Wpf** или **CefSharp.Wpf.NETCore**, если проект написан на **.NET Core**. [Документация для CefSharp](https://cefsharp.github.io/api/51.0.0/html/G_CefSharp_Wpf.htm).
+Теперь в проекте в папке Connected Services/CalcSrv лежит 2 файла. Нас интересует файл Reference.cs. В этом файле определён интерфейс контракта с доступными методами сервиса и реализован класс клиента. Внутри класса клиента реализовано перечисление EndpointConfiguration, которое пригодится при создании объекта клиента.
 
-Для использования тегов CefSharp нужно будет добавить атрибут пространства имён в тег `<Window>`.
+### Использование класса клиента удалённого сервиса
+Для начала создадим простенький интерфейс с элементами для работы с методами нашего удалённого калькулятора в MainWindow.xaml. И создадим методы для обработки нажатия на кнопки.
 
-    xmlns:cefSharp="clr-namespace:CefSharp.Wpf;assembly=CefSharp.Wpf"
+![Пример интерфейса для клиента](https://github.com/elecshen/AoIS/blob/Lb8/imgs/mainWindowXaml.png)
 
-Тогда использование элемента ChromiumWebBrowser будет выглядеть следующим образом: 	
+Теперь в файле MainWindow.xaml.cs переопределим сгенерированные методы.
 
-    <cefSharp:ChromiumWebBrowser></cefSharp:ChromiumWebBrowser>
-### HttpClient вместо WebRequest
-Хоть в методичке и указан пример с использованием WebRequest, однако этот класс считается устаревшим.
-Достаточной альтернативой будет [HttpClient](https://metanit.com/sharp/net/2.1.php) и его метод [GetStringAsync](https://metanit.com/sharp/net/2.2.php)
-### Секреты пользователя
-Такие значения как "ID приложения" и "Защищённый ключ" являются конфиденциальными данными и не могут оставаться в коде программы, отправляемой в открытый репозиторий. Поэтому удобным инструментом будут секреты пользователя или **User Secrets**.
-Для их использования понадобиться установить пакет **Microsoft.Extensions.Configuration.UserSecrets**.
+Объявим переменную для клиента сервиса:
 
-> Стоит обратить внимания, что на .NET Framework проектах может возникнуть проблема с командой из пункта 2. В случае поломки проекта после выполнения команды `dotnet user-secrets init` следует открыть файл проекта .csproj в VS Studio или любом другом редакторе. Найти `<PropertyGroup xmlns=""><UserSecretsId>your-secret-id</UserSecretsId></PropertyGroup>` и переместить тег `<UserSecretsId>` с содержимым в другой тег `<PropertyGroup>`, а тег `<PropertyGroup xmlns="">` вместе с его закрывающей версией удалить. Стоит обратить внимание, что в файле проекта может быть несколько `<PropertyGroup>`, вставлять нужно в тот, который не имеет каких либо атрибутов (например, condition). 
+    private readonly CalculatorSoapClient calculator;
 
- 1. Для использования секретов пользователя нужно открыть терминал PowerShell в папке с файлом проекта .csproj или через Вид->Терминал в VS Studio (если проект и решение находятся не в одной папке, то потребуется сменить директорию терминала, перейдя в папке с файлом проекта)
-`PS D:\source\repos\AoIS> cd '.\VK REST OAuth\`
- 2.  Далее нужно провести инициализацию секретов пользователя для создания уникального идентификатора. 
-`PS D:\source\repos\AoIS\VK REST OAuth> dotnet user-secrets init`
- 3.  Добавляем данные в файл секретов 
- `dotnet user-secrets set "VKApp:AppId" "your_app_id"`
-Теперь файл секретов готов к использованию.
-Основано на примере с [этого сайта](https://stackoverflow.com/questions/42268265/how-to-get-manage-user-secrets-in-a-net-core-console-application).
+И инициализируем её в конструкторе, передав одно из значений перечисления EndpointConfiguration.
 
-> Содержимое файла можно просмотреть с помощью правого клика по файлу проекта в дереве обозревателя решения и выбора "Управление секретами пользователя"
-
-Чтобы получить секреты пользователя в программе достаточно воспользоваться классом **ConfigurationBuilder** 
-`var config = new ConfigurationBuilder().AddUserSecrets<App>().Build();`
-Если мы не хотим каждый раз обращаться к файлу секретов, то можно добавить значения в переменные среды:
-
-    foreach (var child in config.GetChildren())
+    public MainWindow()
     {
-	    Environment.SetEnvironmentVariable(child.Key, child.Value);
+        InitializeComponent();
+        calculator = new(CalculatorSoapClient.EndpointConfiguration.CalculatorSoap);
     }
-Для получения значения переменной среды используется метод **GetEnvironmentVariable**.
-Основано на примере с [этого сайта](https://swharden.com/blog/2021-10-09-console-secrets/).
+
+Реализуем метод клика по кнопке сложения:
+
+    private async void ButtonAdd_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // Получим результат метода
+            int res = await calculator.AddAsync(int.Parse(AddA.Text), int.Parse(AddB.Text));
+            // Выведем результат с помощью MessageBox
+            MessageBox.Show($"Add result is {res}", "Calculation result", MessageBoxButton.OK);
+        } catch (Exception ex)
+        {
+            MessageBox.Show($"Error in AddClick: {ex.Message}", "Calculation error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+Аналогичным образом реализуем остальные методы.
+
+Запустим приложение и проверим работоспособность.
+
+![Запуск приложения и проверка работоспособности](https://github.com/elecshen/AoIS/blob/Lb8/imgs/runClient.png)
+
+### Создание собственного сервиса
+Создадим пустой проект ASP.NET. Установим пакет **SoapCore** через менеджер пакетов NuGet.
+
+Создадим класс сервиса и определим в нём интерфейс контракта и класс реализующий этот интерфейс.
+
+Далее в методе Main добавим в builder сервис SOAP:
+
+    builder.Services.AddSoapCore();
+    builder.Services.AddScoped<ISoapService, SoapService>();
+
+Теперь настроим путь для нашего сервиса:
+
+    app.UseRouting();
+    app.UseEndpoints(endpoints =>
+    {
+        endpoints.UseSoapEndpoint<ISoapService>("/Service.asmx", new SoapEncoderOptions(), SoapSerializer.XmlSerializer);
+    });
+
+Первым параметром передаётся относительный путь на котором мы хотим расположить сервис.
+
+Запускаем сервер и переходим по указанному нами пути.
+
+![Сгенерированный код для SOAP сервиса](https://github.com/elecshen/AoIS/blob/Lb8/imgs/asmxPage.png)
+
+Как можно увидеть asmx файл успешно сгенерировался.
+
+Теперь проверим наш сервис. Добавим ещё одну ссылку на службу, только в этот раз укажем адрес нашего сервиса, в моём случае это https://localhost:7091/Service.asmx.
+
+Так как названия методов такие же как и в удалённом сервисе, то достаточно поменять тип переменной на тип нашего сервиса и поменять EndpointConfiguration на ту, которая была сгенерирована.
